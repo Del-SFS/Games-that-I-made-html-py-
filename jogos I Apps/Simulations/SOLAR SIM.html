@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Sistemas Estelares Pro</title>
+<style>
+:root {
+    --bg: #05070a;
+    --card: #0f121d;
+    --primary: #4facfe;
+    --success: #00ff88;
+}
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background-color: var(--bg); 
+    color: white; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    padding: 20px;
+    min-height: 100vh;
+    position: relative;
+    overflow-y: auto;
+}
+
+
+
+/* Fundo com estrelas */
+body::before {
+    z-index: -1; /* envia o fundo para trás */
+    content: '';
+    position: absolute;
+    top:0; left:0; right:0; bottom:0;
+    background: transparent;
+    z-index: 0;
+    pointer-events: none;
+    box-shadow:
+        50px 80px white,
+        120px 200px white,
+        300px 50px white,
+        400px 300px white,
+        500px 150px white,
+        600px 250px white,
+        700px 100px white,
+        200px 400px white,
+        350px 350px white,
+        450px 450px white,
+        550px 50px white,
+        650px 200px white,
+        750px 400px white;
+    animation: twinkle 2s infinite alternate;
+}
+@keyframes twinkle {
+    0% {opacity:0.7;}
+    50% {opacity:1;}
+    100% {opacity:0.7;}
+}
+
+.container {
+    width: 100%;
+    max-width: 700px;
+    text-align: center;
+    position: relative;
+    z-index: 1; /* acima das estrelas */
+}
+button { 
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    border: none; 
+    padding: 15px 40px; 
+    color: white; 
+    border-radius: 50px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 18px; 
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    transition: 0.3s;
+    margin-bottom: 30px;
+}
+button:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6); }
+.card { 
+    background: var(--card); 
+    border-radius: 20px; 
+    padding: 25px; 
+    border: 1px solid #222;
+    text-align: left;
+    animation: fadeIn 0.5s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.estrela-info { 
+    border-bottom: 2px solid #222; 
+    padding-bottom: 20px; 
+    margin-bottom: 20px; 
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+.estrela-circulo { width: 50px; height: 50px; border-radius: 50%; box-shadow: 0 0 20px currentColor; }
+.planeta { 
+    background: rgba(255, 255, 255, 0.03); 
+    margin: 10px 0; 
+    padding: 15px; 
+    border-radius: 12px; 
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid transparent;
+}
+.planeta-cor { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; position: relative;}
+.habitavel { 
+    border-color: var(--success); 
+    background: rgba(0, 255, 136, 0.05); 
+}
+.badge { 
+    background: var(--success); 
+    color: black; 
+    padding: 3px 8px; 
+    border-radius: 5px; 
+    font-size: 10px; 
+    font-weight: bold; 
+    margin-left: 8px;
+}
+small { color: #888; }
+@keyframes pulse {
+    0% { box-shadow: 0 0 10px var(--success); }
+    50% { box-shadow: 0 0 20px var(--success); }
+    100% { box-shadow: 0 0 10px var(--success); }
+}
+.planeta.habitavel { animation: pulse 2s infinite; }
+
+/* Anéis visuais */
+.planeta-com-aneis .planeta-cor::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Simulador de Sistemas Estelares Avançado</h1>
+    <button id="gerar">Descobrir Novo Sistema</button>
+
+    <div id="output" class="card" style="display:none;">
+        <div id="estrela" class="estrela-info"></div>
+        <div id="planetas"></div>
+    </div>
+</div>
+
+<script>
+// Tipos de estrelas
+const tiposEstrela = [
+    { nome: "Anã Marrom", cor: "#804000", hzMin: 0.0, hzMax: 0.05, massa: 0.05 },
+    { nome: "M (Anã Vermelha)", cor: "#ff4d4d", hzMin: 0.1, hzMax: 0.4, massa: 0.3 },
+    { nome: "K (Anã Laranja)", cor: "#ff9933", hzMin: 0.3, hzMax: 0.8, massa: 0.7 },
+    { nome: "G (Sol)", cor: "#f9d71c", hzMin: 0.8, hzMax: 1.6, massa: 1.0 },
+    { nome: "F (Estrela Branca)", cor: "#ffffff", hzMin: 1.5, hzMax: 2.8, massa: 1.4 },
+    { nome: "A (Branca Azulada)", cor: "#cce6ff", hzMin: 2.5, hzMax: 6.0, massa: 2.0 },
+    { nome: "B (Azul)", cor: "#4facfe", hzMin: 10, hzMax: 25, massa: 6.0 },
+    { nome: "O (Azul Intensa)", cor: "#3399ff", hzMin: 20, hzMax: 40, massa: 16.0 },
+    { nome: "Anã Branca", cor: "#cccccc", hzMin: 0.0, hzMax: 0.0, massa: 1.0 },
+    { nome: "Quasi-Star (US)", cor: "#ffcc66", hzMin: 5, hzMax: 15, massa: 50 },
+    { nome: "Estrela de Nêutrons", cor: "#888888", hzMin: 0, hzMax: 0, massa: 1.4 },
+    { nome: "Buraco Negro", cor: "#000000", hzMin: 0, hzMax: 0, massa: 10 }
+];
+
+// Tipos de planetas
+const tiposPlanetas = [
+    { nome: "Rochoso", cor: "#a88e7a" },
+    { nome: "Gigante Gasoso", cor: "#e3bb76" },
+    { nome: "Oceânico", cor: "#2b65ec" },
+    { nome: "Desértico", cor: "#edc9af" },
+    { nome: "Gelado", cor: "#d0f0f7" },
+    { nome: "Vulcânico", cor: "#ff4500" }
+];
+
+const composicaoPlaneta = {
+    "Rochoso": ["Silicato", "Ferro", "Níquel"],
+    "Oceânico": ["Água", "Silicato", "Gelo"],
+    "Desértico": ["Silicato", "Ferro", "Gás"],
+    "Gigante Gasoso": ["Hidrogênio", "Hélio", "Metano"],
+    "Gelado": ["Gelo", "Amônia", "Metano"],
+    "Vulcânico": ["Magma", "Silicato", "Enxofre"]
+};
+
+function gerarRaio(tipo){
+    switch(tipo){
+        case "Rochoso": return (Math.random()*0.5+0.5).toFixed(2); 
+        case "Oceânico": return (Math.random()*0.5+0.8).toFixed(2); 
+        case "Desértico": return (Math.random()*0.7+0.6).toFixed(2); 
+        case "Gigante Gasoso": return (Math.random()*10+3).toFixed(2); 
+        case "Gelado": return (Math.random()*0.5+1).toFixed(2); 
+        case "Vulcânico": return (Math.random()*0.4+0.7).toFixed(2); 
+    }
+}
+
+function gerarMassa(tipo){
+    switch(tipo){
+        case "Rochoso": return (Math.random()*0.8+0.2).toFixed(2); 
+        case "Oceânico": return (Math.random()*0.6+0.5).toFixed(2); 
+        case "Desértico": return (Math.random()*0.5+0.3).toFixed(2); 
+        case "Gigante Gasoso": return (Math.random()*300+50).toFixed(2); 
+        case "Gelado": return (Math.random()*0.7+0.5).toFixed(2); 
+        case "Vulcânico": return (Math.random()*0.4+0.6).toFixed(2); 
+    }
+}
+
+function estimarTemperatura(distancia, estrela){
+    if(estrela.hzMax===0) return 0;
+    const lumFactor = estrela.hzMax / estrela.hzMin;
+    return 288*Math.sqrt(lumFactor/distancia);
+}
+
+function gerarComposicao(tipo){
+    const elementos = composicaoPlaneta[tipo];
+    let restante=100, porcentagens=[];
+    for(let i=0;i<elementos.length;i++){
+        let valor;
+        if(i===elementos.length-1) valor=restante;
+        else { valor=Math.floor(Math.random()*(restante-(elementos.length-i-1)))+1; restante-=valor;}
+        porcentagens.push(valor);
+    }
+    return elementos.map((el,idx)=>`${el}: ${porcentagens[idx]}%`).join(', ');
+}
+
+function gerarEstrelas(){
+    const qtd = Math.random()<0.35 ? 2 : 1;
+    let estrelas=[];
+    for(let i=0;i<qtd;i++){
+        estrelas.push(tiposEstrela[Math.floor(Math.random()*tiposEstrela.length)]);
+    }
+    return estrelas;
+}
+
+function calcularGravidade(massa,raio){
+    return (massa/(raio**2)).toFixed(2);
+}
+
+function gerarAtmosfera(tipo){
+    if(tipo==="Gigante Gasoso") return "H₂, He";
+    const gases=["N₂","O₂","CO₂","CH₄","Ar"];
+    return gases.sort(()=>0.5-Math.random()).slice(0,3).join(", ");
+}
+
+function gerarPeriodoOrbital(distancia, estrelaMassa){
+    return Math.sqrt((distancia**3)/estrelaMassa).toFixed(2);
+}
+
+function gerarDia(){
+    return Math.floor(Math.random()*30)+8;
+}
+
+function calcularVida({habitavel,tempC,atmosfera,gravidade}){
+    if(!habitavel) return "Nenhuma";
+    let score=0;
+    if(tempC>0 && tempC<50) score++;
+    if(atmosfera.includes("O₂")) score++;
+    if(gravidade>0.7 && gravidade<1.5) score++;
+    if(score===3) return "Vida Inteligente 🧠";
+    if(score===2) return "Vida Complexa 🌱";
+    if(score===1) return "Vida Microbiana 🦠";
+    return "Nenhuma";
+}
+
+function formatarMassa(massaNum){
+    if(massaNum>100*317.8) return (massaNum/(317.8*100)).toFixed(2)+" M☉";
+    else if(massaNum>100) return (massaNum/317.8).toFixed(2)+" M♃";
+    else return massaNum.toFixed(2)+" M⊕";
+}
+
+document.getElementById('gerar').addEventListener('click',()=>{
+    const output=document.getElementById('output');
+    const estrelaDiv=document.getElementById('estrela');
+    const planetasDiv=document.getElementById('planetas');
+    output.style.display='block';
+    planetasDiv.innerHTML='';
+    const estrelas=gerarEstrelas();
+    const estrela=estrelas[0];
+    estrelaDiv.innerHTML='';
+    estrelas.forEach(s=>{
+        estrelaDiv.innerHTML+=`
+            <div class="estrela-circulo" style="background:${s.cor}; color:${s.cor}"></div>
+            <div>
+                <strong style="font-size: 1.2em;">${s.nome}</strong><br>
+                <small>Zona Habitável: ${s.hzMin} - ${s.hzMax} UA</small>
+            </div>
+        `;
+    });
+
+    const qtd=Math.floor(Math.random()*6)+3;
+    for(let i=1;i<=qtd;i++){
+        const tipoObj=tiposPlanetas[Math.floor(Math.random()*tiposPlanetas.length)];
+        const distNum=parseFloat((i*(estrela.hzMax/1.5)*(Math.random()+0.4)).toFixed(2));
+        const habitavel=distNum>=estrela.hzMin && distNum<=estrela.hzMax && (tipoObj.nome==="Rochoso"||tipoObj.nome==="Oceânico") && estrela.hzMax>0;
+        const div=document.createElement('div');
+
+        const raio=gerarRaio(tipoObj.nome);
+        const massaNum=parseFloat(gerarMassa(tipoObj.nome));
+        const massaDisplay=formatarMassa(massaNum);
+
+        const tempK=estimarTemperatura(distNum,estrela);
+        const tempC=Math.round(tempK-273.15);
+        const luas=Math.floor(Math.random()*4);
+        const composicao=gerarComposicao(tipoObj.nome);
+
+        const gravidade=calcularGravidade(massaNum,raio);
+        const atmosfera=gerarAtmosfera(tipoObj.nome);
+        const dia=gerarDia();
+        const ano=gerarPeriodoOrbital(distNum,estrela.massa);
+        const vida=calcularVida({habitavel,tempC,atmosfera,gravidade});
+
+        const temAneis=Math.random()<0.4;
+        const aneisPlaneta=temAneis?"Sim":"Não";
+        const aneisLua=Math.random()<0.3?"Sim":"Não";
+
+        div.className=`planeta ${habitavel?'habitavel':''} ${temAneis?'planeta-com-aneis':''}`;
+        div.innerHTML=`
+            <div class="planeta-cor" style="background:${tipoObj.cor}"></div>
+            <div style="flex-grow:1">
+                <strong>Sistema-X${i}</strong> (${tipoObj.nome}) ${habitavel?'<span class="badge">HABITÁVEL</span>':''}<br>
+                <small>
+                    Distância: ${distNum} UA | Luas: ${luas} | Raio: ${raio} R⊕ | Massa: ${massaDisplay} | Temp: ${tempC}°C<br>
+                    Gravidade: ${gravidade} g | Dia: ${dia}h | Ano: ${ano} anos<br>
+                    Atmosfera: ${atmosfera}<br>
+                    Vida: <strong>${vida}</strong><br>
+                    Composição: ${composicao}<br>
+                    Anéis do Planeta: ${aneisPlaneta}<br>
+                    Anéis da Lua: ${aneisLua}
+                </small>
+            </div>
+        `;
+        planetasDiv.appendChild(div);
+    }
+});
+</script>
+</body>
+</html>

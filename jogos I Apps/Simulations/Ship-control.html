@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Starship Live Feed</title>
+  <style>
+    body { margin:0; background:black; overflow:hidden; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// IMAGENS
+let shipImg = new Image();
+shipImg.src = "starship.png";
+
+let mechImg = new Image();
+mechImg.src = "mechazilla.png";
+
+// ESTADO
+let gameState = "menu";
+let controlMode = null;
+let level = 1;
+
+// COMBUSTÍVEL
+let fuel = 100;
+
+// SHIP
+let ship = { x: 300, y: 0, vx: 0, vy: 2, angle: 0 };
+
+// ARMS
+let arms = { x: canvas.width/2, open: 120 };
+
+// INPUT
+document.addEventListener("keydown", (e) => {
+
+  if (gameState === "menu") {
+    if (e.key === "1") startGame("ship");
+    if (e.key === "2") startGame("arms");
+  }
+
+  if (gameState === "game") {
+
+    // SHIP (usa combustível)
+    if (controlMode === "ship" && fuel > 0) {
+      if (e.key === "ArrowLeft") { ship.vx -= 0.4; fuel -= 1; }
+      if (e.key === "ArrowRight") { ship.vx += 0.4; fuel -= 1; }
+      if (e.key === "ArrowUp") { ship.vy -= 0.5; fuel -= 2; }
+    }
+
+    // ARMS
+    if (controlMode === "arms") {
+      if (e.key === "ArrowLeft") arms.x -= 25;
+      if (e.key === "ArrowRight") arms.x += 25;
+      if (e.key === "ArrowUp") arms.open -= 10;
+      if (e.key === "ArrowDown") arms.open += 10;
+    }
+  }
+});
+
+function startGame(mode) {
+  controlMode = mode;
+  reset();
+  gameState = "game";
+}
+
+function reset() {
+  ship.x = Math.random() * canvas.width;
+  ship.y = 0;
+  ship.vx = 0;
+  ship.vy = 2 + level * 0.3;
+  fuel = 100;
+}
+
+// 📺 EFEITO TRANSMISSÃO
+function drawFX() {
+  // scanlines
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  for (let y = 0; y < canvas.height; y += 4) {
+    ctx.fillRect(0,y,canvas.width,2);
+  }
+
+  // noise leve
+  for (let i=0;i<80;i++){
+    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.1})`;
+    ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height,1,1);
+  }
+}
+
+// HUD estilo SpaceX
+function drawHUD() {
+  ctx.fillStyle = "white";
+  ctx.font = "16px monospace";
+
+  ctx.fillText("ALT: " + Math.floor(canvas.height - ship.y), 20, 30);
+  ctx.fillText("VEL: " + ship.vy.toFixed(2), 20, 50);
+  ctx.fillText("FUEL: " + fuel, 20, 70);
+  ctx.fillText("LEVEL: " + level, 20, 90);
+
+  // borda tipo câmera
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(10,10,canvas.width-20,canvas.height-20);
+}
+
+// MENU
+function drawMenu() {
+  ctx.fillStyle = "black";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "white";
+  ctx.font = "28px monospace";
+  ctx.fillText("SPACEX LIVE SYSTEM", 50, 150);
+
+  ctx.font = "18px monospace";
+  ctx.fillText("1 - PILOTAR STARSHIP", 50, 250);
+  ctx.fillText("2 - CONTROLAR MECHAZILLA", 50, 300);
+
+  drawFX();
+}
+
+// GAME
+function updateGame() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // física
+  ship.y += ship.vy;
+  ship.x += ship.vx;
+  ship.angle += 0.01;
+
+  // imagem ship
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+  ctx.rotate(ship.angle);
+  ctx.drawImage(shipImg, -25, -60, 50, 120);
+  ctx.restore();
+
+  // torre
+  ctx.drawImage(mechImg, arms.x - 100, canvas.height - 200, 200, 200);
+
+  // braços
+  ctx.fillStyle = "red";
+  ctx.fillRect(arms.x - arms.open, canvas.height-120, arms.open-10, 20);
+  ctx.fillRect(arms.x + 10, canvas.height-120, arms.open-10, 20);
+
+  // WIN
+  if (
+    ship.y > canvas.height-130 &&
+    ship.x > arms.x - arms.open &&
+    ship.x < arms.x + arms.open
+  ) {
+    level++;
+    reset();
+  }
+
+  // LOSE
+  if (ship.y > canvas.height) {
+    alert("RUD (Rapid Unscheduled Disassembly) 💥");
+    reset();
+  }
+
+  drawHUD();
+  drawFX();
+}
+
+// LOOP
+function loop() {
+  if (gameState === "menu") drawMenu();
+  if (gameState === "game") updateGame();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Super Universo Sandbox 2D</title>
+<style>
+body { margin:0; background:black; overflow:hidden; color:white; font-family:Arial;}
+canvas { display:block; margin:auto; background: radial-gradient(circle,#050510,#000); cursor:grab;}
+button { position:absolute; top:10px; left:10px; padding:10px 20px; font-size:16px; cursor:pointer; z-index:10;}
+#info { position:absolute; bottom:10px; left:10px; font-size:16px; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:5px;}
+</style>
+</head>
+<body>
+
+<button onclick="gerarSistema()">Gerar novo sistema</button>
+<canvas id="canvas" width="1000" height="600"></canvas>
+<div id="info">Clique em um corpo para ver informações.</div>
+
+<script>
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const info=document.getElementById("info");
+
+let corpos=[],estrela={x:0,y:0,raio:40,massa:5000,cor:"yellow",nome:"Estrela"};
+let offsetX=0,offsetY=0,scale=1;
+let isDragging=false,dragStart={x:0,y:0},draggingBody=null;
+const G=0.05; // constante gravitacional simplificada
+
+function random(min,max){return Math.random()*(max-min)+min;}
+const nomesPlanetas=["Aurelia","Boreas","Cyllene","Draco","Erebus","Faelix","Gaia","Hestia","Icarus","Juno","Kael","Lyra","Mora","Nexus","Orion","Pyxis","Quillon","Rhea","Selene","Titan"];
+
+function tipoPlaneta(){ const r=Math.random(); if(r<0.5)return"Rochoso"; else if(r<0.85)return"Gasoso"; else return"Habitável"; }
+
+function gerarSistema(){
+  corpos=[]; offsetX=0; offsetY=0; scale=1;
+  estrela={x:0,y:0,raio:40,massa:5000,cor:"yellow",nome:"Estrela"};
+
+  // Planetas
+  const quantidade=Math.floor(random(4,8));
+  for(let i=0;i<quantidade;i++){
+    const tipo=tipoPlaneta();
+    const cor=(tipo==="Rochoso")?`hsl(${random(0,40)},70%,50%)`:
+              (tipo==="Gasoso")?`hsl(${random(180,260)},70%,60%)`:
+              `hsl(${random(100,160)},70%,50%)`;
+    const dist=70 + i*random(60,100);
+    const ang=random(0,Math.PI*2);
+    const vel=Math.sqrt(G*estrela.massa/dist);
+    const p={
+      nome:nomesPlanetas[Math.floor(random(0,nomesPlanetas.length))],
+      tipo:tipo,
+      x:Math.cos(ang)*dist, y:Math.sin(ang)*dist,
+      vx:-Math.sin(ang)*vel, vy:Math.cos(ang)*vel,
+      raio:random(6,14), massa: random(50,150),
+      cor:cor, luas:[]
+    };
+    // Luas
+    const numLuas=(tipo==="Gasoso")? Math.floor(random(1,4)) : (tipo==="Habitável"? Math.floor(random(0,3)) : Math.floor(random(0,2)));
+    for(let j=0;j<numLuas;j++){
+      const ld=p.raio*2+random(10,30);
+      const lang=random(0,Math.PI*2);
+      const lv=Math.sqrt(G*p.massa/ld);
+      p.luas.push({
+        nome:p.nome+"-Lua"+(j+1),
+        x:p.x+Math.cos(lang)*ld,
+        y:p.y+Math.sin(lang)*ld,
+        vx:p.vx - Math.sin(lang)*lv,
+        vy:p.vy + Math.cos(lang)*lv,
+        raio:random(2,5),
+        cor:"gray",
+        massa:random(5,20),
+        parent:p
+      });
+    }
+    corpos.push(p);
+    p.luas.forEach(l=>corpos.push(l));
+  }
+
+  // Asteroides
+  for(let i=0;i<50;i++){
+    const dist=random(60,corpos[corpos.length-1].x+100);
+    const ang=random(0,Math.PI*2);
+    const vel=Math.sqrt(G*estrela.massa/dist);
+    corpos.push({
+      nome:"Asteroide",
+      x:Math.cos(ang)*dist, y:Math.sin(ang)*dist,
+      vx:-Math.sin(ang)*vel, vy:Math.cos(ang)*vel,
+      raio:random(1,3),
+      massa: random(1,10),
+      cor:"lightgray",
+      tipo:"Asteroide"
+    });
+  }
+
+  // Cometas
+  for(let i=0;i<5;i++){
+    corpos.push({
+      nome:"Cometa",
+      x:random(-500,500), y:random(-300,300),
+      vx:random(1,3), vy:random(-1,1),
+      raio:random(3,6),
+      massa: random(1,5),
+      cor:"white",
+      tipo:"Cometa"
+    });
+  }
+}
+
+// física simplificada
+function aplicarGravidade(body){
+  corpos.forEach(other=>{
+    if(body===other) return;
+    const dx=other.x-body.x;
+    const dy=other.y-body.y;
+    const dist2=dx*dx+dy*dy;
+    if(dist2<1) return;
+    const force=G*other.massa/(dist2);
+    body.vx+=force*dx/Math.sqrt(dist2);
+    body.vy+=force*dy/Math.sqrt(dist2);
+  });
+  // estrela
+  const dx=estrela.x-body.x;
+  const dy=estrela.y-body.y;
+  const dist2=dx*dx+dy*dy;
+  const force=G*estrela.massa/(dist2);
+  body.vx+=force*dx/Math.sqrt(dist2);
+  body.vy+=force*dy/Math.sqrt(dist2);
+}
+
+// colisões simplificadas
+function checarColisoes(){
+  for(let i=0;i<corpos.length;i++){
+    for(let j=i+1;j<corpos.length;j++){
+      const a=corpos[i], b=corpos[j];
+      const dx=a.x-b.x, dy=a.y-b.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<a.raio+b.raio){
+        // absorver menor
+        if(a.massa>=b.massa){
+          a.massa+=b.massa;
+          a.raio=Math.cbrt(a.raio**3+b.raio**3); 
+          corpos.splice(j,1); j--;
+        }else{
+          b.massa+=a.massa;
+          b.raio=Math.cbrt(a.raio**3+b.raio**3);
+          corpos.splice(i,1); i--; break;
+        }
+      }
+    }
+  }
+}
+
+// Zoom e arrastar câmera
+canvas.addEventListener("wheel",(e)=>{ e.preventDefault(); scale*=e.deltaY<0?1.1:0.9; });
+canvas.addEventListener("mousedown",(e)=>{
+  const mx=(e.offsetX-canvas.width/2)/scale - offsetX;
+  const my=(e.offsetY-canvas.height/2)/scale - offsetY;
+  for(let c of corpos){ if(Math.hypot(mx-c.x,my-c.y)<=c.raio){ draggingBody=c; return; } }
+  isDragging=true; dragStart={x:e.offsetX,y:e.offsetY};
+});
+canvas.addEventListener("mousemove",(e)=>{
+  if(draggingBody){
+    const mx=(e.offsetX-canvas.width/2)/scale;
+    const my=(e.offsetY-canvas.height/2)/scale;
+    draggingBody.x=mx; draggingBody.y=my; draggingBody.vx=0; draggingBody.vy=0;
+  }else if(isDragging){
+    offsetX+=(e.offsetX-dragStart.x)/scale; offsetY+=(e.offsetY-dragStart.y)/scale;
+    dragStart={x:e.offsetX,y:e.offsetY};
+  }
+});
+canvas.addEventListener("mouseup",()=>{ isDragging=false; draggingBody=null; });
+
+// clique info
+canvas.addEventListener("click",(e)=>{
+  if(draggingBody) return;
+  const mx=(e.offsetX-canvas.width/2)/scale - offsetX;
+  const my=(e.offsetY-canvas.height/2)/scale - offsetY;
+  for(let c of corpos){ if(Math.hypot(mx-c.x,my-c.y)<=c.raio){
+    // calcular temperatura
+    const dx=c.x-estrela.x, dy=c.y-estrela.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const temp=Math.max(0,1000/(dist/50));
+    info.innerHTML=`<strong>${c.nome}</strong> Tipo: ${c.tipo||"Planeta"} Raio: ${c.raio.toFixed(1)} Temperatura: ${temp.toFixed(0)}K`;
+    return;
+  }}
+  info.innerHTML="Clique em um corpo para ver informações.";
+});
+
+// desenhar e atualizar
+function desenhar(){
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.translate(canvas.width/2,canvas.height/2); ctx.scale(scale,scale); ctx.translate(offsetX,offsetY);
+
+  // estrela
+  ctx.beginPath(); ctx.arc(estrela.x,estrela.y,estrela.raio,0,Math.PI*2); ctx.fillStyle=estrela.cor; ctx.fill();
+
+  corpos.forEach(c=>{
+    aplicarGravidade(c);
+    c.x+=c.vx; c.y+=c.vy;
+  });
+  checarColisoes();
+
+  corpos.forEach(c=>{
+    ctx.beginPath(); ctx.arc(c.x,c.y,c.raio,0,Math.PI*2); 
+    ctx.fillStyle=c.cor; ctx.fill();
+  });
+
+  ctx.restore();
+  requestAnimationFrame(desenhar);
+}
+
+gerarSistema();
+desenhar();
+</script>
+</body>
+</html>

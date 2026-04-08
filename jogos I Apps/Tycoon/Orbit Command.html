@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbit Command - SpaceX Edition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
+
+  body {
+    font-family: 'Orbitron', sans-serif;
+    background-color: #0b0c1b;
+    color: #cfd8dc;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background-color: #121430;
+    padding: 15px;
+    text-align: center;
+    border-bottom: 2px solid #00d4ff;
+  }
+  h1 {
+    margin: 0;
+    color: #00d4ff;
+    text-shadow: 0 0 8px #00d4ff;
+  }
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 20px;
+    gap: 20px;
+  }
+  .panel {
+    background-color: #1a1b3c;
+    border: 1px solid #00d4ff;
+    padding: 20px;
+    border-radius: 10px;
+    flex: 1 1 300px;
+    box-shadow: 0 0 15px rgba(0,212,255,0.3);
+    transition: transform 0.2s;
+  }
+  .panel:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 25px rgba(0,212,255,0.6);
+  }
+  button {
+    padding: 10px 18px;
+    margin-top: 8px;
+    cursor: pointer;
+    border: 1px solid #00d4ff;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #00d4ff;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  button:hover {
+    background-color: #00d4ff;
+    color: #0b0c1b;
+    box-shadow: 0 0 10px #00d4ff;
+  }
+  #events {
+    height: 160px;
+    overflow-y: auto;
+    background-color: #121430;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #00d4ff;
+  }
+  .module, .crew-member {
+    border-radius: 6px;
+    padding: 6px;
+    margin: 6px 0;
+    border: 1px solid #00d4ff;
+    text-shadow: 0 0 3px #00d4ff;
+  }
+  #menu, #tutorial {
+    position: fixed;
+    top:0; left:0; width:100%; height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:10;
+    background-color:#0b0c1b;
+    text-align:center;
+    padding:20px;
+  }
+  #menu h1,#tutorial h2 {
+    color:#00d4ff;
+    text-shadow: 0 0 15px #00d4ff;
+  }
+  #menu button,#tutorial button {
+    font-size:20px;
+    margin:10px;
+  }
+  .resource-label {
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    margin:5px 0;
+  }
+  .resource-label span {
+    font-weight:bold;
+  }
+</style>
+</head>
+<body>
+
+<!-- Menu Inicial -->
+<div id="menu">
+  <h1>Orbit Command</h1>
+  <p>Escolha o modo de jogo ou faça o tutorial</p>
+  <button onclick="startTutorial()">Tutorial</button>
+  <button onclick="startGame('realista')">Realista</button>
+  <button onclick="startGame('normal')">Normal</button>
+  <button onclick="startGame('infinito')">Infinito</button>
+</div>
+
+<!-- Tutorial -->
+<div id="tutorial" style="display:none;">
+  <h2>Tutorial</h2>
+  <p id="tutorial-text"></p>
+  <button id="tutorial-next">Próximo</button>
+</div>
+
+<header>
+  <h1>Orbit Command</h1>
+  <p>Gerencie sua estação espacial, tripulação e módulos!</p>
+</header>
+
+<div class="container">
+  <div class="panel">
+    <h2>Recursos</h2>
+    <div class="resource-label">Oxigênio: <span id="oxygen">100</span>%</div>
+    <div class="resource-label">Energia: <span id="energy">100</span>%</div>
+    <div class="resource-label">Comida: <span id="food">100</span>%</div>
+    <div class="resource-label">Moral: <span id="morale">100</span>%</div>
+    <button onclick="repair()">Reparar Sistema</button>
+    <button onclick="produceFood()">Produzir Comida</button>
+    <button onclick="restCrew()">Descansar Tripulação</button>
+    <button onclick="research()">Pesquisa de Upgrade</button>
+  </div>
+
+  <div class="panel">
+    <h2>Módulos da Estação</h2>
+    <div id="modules"></div>
+    <button onclick="addModule()">Adicionar Módulo</button>
+  </div>
+
+  <div class="panel">
+    <h2>Tripulação</h2>
+    <div id="crew"></div>
+    <button onclick="trainCrew()">Treinar Tripulação</button>
+  </div>
+
+  <div class="panel">
+    <h2>Eventos</h2>
+    <div id="events"></div>
+    <button onclick="nextTurn()">Próximo Turno</button>
+  </div>
+</div>
+
+<script>
+// ===== Variáveis =====
+let mode = 'normal';
+let resources = { oxygen:100, energy:100, food:100, morale:100 };
+let modules = [
+  {name: "Habitação", level: 1},
+  {name: "Laboratório", level: 1}
+];
+let crew = [
+  {name: "Engenheiro", skill: 1, morale: 100},
+  {name: "Cientista", skill: 1, morale: 100},
+  {name: "Médico", skill: 1, morale: 100},
+  {name: "Piloto", skill: 1, morale: 100}
+];
+
+// ===== Tutorial =====
+let tutorialSteps = [
+  "Bem-vindo ao Orbit Command! Vamos aprender a gerenciar sua estação.",
+  "Observe os recursos: Oxigênio, Energia, Comida e Moral.",
+  "Clique em 'Produzir Comida' para aumentar o alimento da estação.",
+  "Clique em 'Reparar Sistema' para restaurar Oxigênio ou Energia.",
+  "Clique em 'Descansar Tripulação' para aumentar a Moral da tripulação.",
+  "Você pode adicionar novos módulos da estação clicando em 'Adicionar Módulo'.",
+  "Treine sua tripulação clicando em 'Treinar Tripulação'.",
+  "Agora que você conhece o básico, clique em 'Próximo Turno' para avançar e experimentar eventos aleatórios.",
+  "Parabéns! Você completou o tutorial. Agora escolha um modo de jogo e comece a aventura."
+];
+let tutorialStepIndex = 0;
+function startTutorial() {
+  document.getElementById('tutorial').style.display = 'flex';
+  document.getElementById('menu').style.display = 'none';
+  showTutorialStep();
+}
+function showTutorialStep() {
+  document.getElementById('tutorial-text').innerText = tutorialSteps[tutorialStepIndex];
+}
+document.getElementById('tutorial-next').onclick = function() {
+  tutorialStepIndex++;
+  if(tutorialStepIndex >= tutorialSteps.length) {
+    document.getElementById('tutorial').style.display = 'none';
+    document.getElementById('menu').style.display = 'flex';
+    tutorialStepIndex = 0;
+  } else {
+    showTutorialStep();
+  }
+}
+
+// ===== Início do Jogo =====
+function startGame(selectedMode) {
+  mode = selectedMode;
+  document.getElementById('menu').style.display = 'none';
+  addEvent(`Modo de jogo selecionado: ${mode.toUpperCase()}`);
+  updateUI();
+}
+
+// ===== Atualiza UI =====
+function updateUI() {
+  document.getElementById('oxygen').innerText = resources.oxygen;
+  document.getElementById('energy').innerText = resources.energy;
+  document.getElementById('food').innerText = resources.food;
+  document.getElementById('morale').innerText = resources.morale;
+
+  const modulesDiv = document.getElementById('modules');
+  modulesDiv.innerHTML = "";
+  modules.forEach((m) => {
+    const div = document.createElement('div');
+    div.className = "module";
+    div.innerText = `${m.name} (Nível ${m.level})`;
+    modulesDiv.appendChild(div);
+  });
+
+  const crewDiv = document.getElementById('crew');
+  crewDiv.innerHTML = "";
+  crew.forEach(c => {
+    const div = document.createElement('div');
+    div.className = "crew-member";
+    div.innerText = `${c.name} - Habilidade: ${c.skill} - Moral: ${c.morale}`;
+    crewDiv.appendChild(div);
+  });
+}
+
+// ===== Eventos =====
+function addEvent(message) {
+  const eventsDiv = document.getElementById('events');
+  const p = document.createElement('p');
+  p.innerText = message;
+  eventsDiv.prepend(p);
+}
+
+// ===== Ações =====
+function repair() {
+  if(resources.energy >= 10) { resources.energy -= 10; resources.oxygen += 5; addEvent("Você reparou sistemas críticos! Oxigênio aumentou."); }
+  else addEvent("Energia insuficiente para reparos.");
+  updateUI(); checkVictory();
+}
+function produceFood() {
+  if(resources.energy >= 10) { resources.energy -= 10; resources.food += 10; addEvent("Comida produzida com sucesso!"); }
+  else addEvent("Energia insuficiente para produção de comida.");
+  updateUI(); checkVictory();
+}
+function restCrew() {
+  resources.morale += 15; resources.food -= 5;
+  crew.forEach(c => c.morale += 10);
+  addEvent("Tripulação descansou e moral aumentou.");
+  updateUI(); checkVictory();
+}
+function research() {
+  if(resources.energy >= 15) { resources.energy -= 15; const module = modules[Math.floor(Math.random()*modules.length)]; module.level += 1; addEvent(`Pesquisa concluída! Módulo ${module.name} evoluiu para nível ${module.level}.`); }
+  else addEvent("Energia insuficiente para pesquisa.");
+  updateUI(); checkVictory();
+}
+function addModule() {
+  const names = ["Hangar","Reator","Jardim Hidropônico","Estação de Mineração"];
+  const name = names[Math.floor(Math.random()*names.length)];
+  modules.push({name:name, level:1});
+  addEvent(`Novo módulo adicionado: ${name}`);
+  updateUI(); checkVictory();
+}
+function trainCrew() {
+  crew.forEach(c=>{if(resources.food>=5){resources.food-=5;c.skill+=1;c.morale+=5;addEvent(`${c.name} foi treinado! Habilidade aumentou.`);}});
+  updateUI(); checkVictory();
+}
+
+// ===== Eventos Aleatórios =====
+function randomEvent() {
+  if(mode==='infinito') return;
+  const events = [
+    ()=>{resources.oxygen-=10; addEvent("Vazamento de oxigênio!");},
+    ()=>{resources.energy-=15; addEvent("Tempestade solar afetou os painéis!");},
+    ()=>{resources.food-=10; addEvent("Contaminação na produção de comida!");},
+    ()=>{resources.morale-=10; crew.forEach(c=>c.morale-=5); addEvent("Discussão entre membros da tripulação.");}
+  ];
+  const event = events[Math.floor(Math.random()*events.length)];
+  event();
+}
+
+// ===== Próximo Turno =====
+function nextTurn() {
+  let rate=5;
+  if(mode==='realista') rate=10;
+  else if(mode==='infinito') rate=0;
+
+  resources.oxygen-=rate;
+  resources.energy-=rate;
+  resources.food-=rate;
+  resources.morale-=Math.floor(rate/2);
+  crew.forEach(c=>c.morale-=Math.floor(rate/2));
+  randomEvent();
+  updateUI(); checkVictory();
+}
+
+// ===== Sistema de Vitória =====
+function checkVictory() {
+  if(mode==='realista'){
+    if(resources.oxygen<=0 || resources.energy<=0 || resources.food<=0 || resources.morale<=0){
+      alert("Você perdeu! Um recurso crítico chegou a zero."); location.reload();
+    }
+    if(modules.every(m=>m.level>=5)) alert("Parabéns! Você completou todos os módulos e venceu o modo Realista!");
+  } else if(mode==='normal'){
+    if(resources.oxygen<=0 || resources.energy<=0 || resources.food<=0 || resources.morale<=0){
+      alert("Você perdeu! Recursos ou moral críticos zerados."); location.reload();
+    }
+    if(modules.length>=8 && crew.every(c=>c.skill>=5)) alert("Vitória! Sua estação está bem desenvolvida e sua tripulação treinada!");
+  } else if(mode==='infinito'){
+    if(modules.every(m=>m.level>=10) && crew.every(c=>c.skill>=10)) alert("Parabéns! Você maximizou sua estação e tripulação no modo Infinito!");
+  }
+}
+
+// ===== Inicialização =====
+updateUI();
+addEvent("Estação iniciada com sucesso. Boa sorte, comandante!");
+</script>
+
+</body>
+</html>

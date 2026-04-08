@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Space Exploration – Dyson Mode</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Inter:wght@300;400;600&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: radial-gradient(circle at top, #0b0d17 0%, #000 70%);
+    color: #e5e5e5;
+    text-align: center;
+    padding: 20px;
+    overflow: hidden;
+}
+
+h1 { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; }
+
+/* MENU */
+#mainMenu {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at top, #0b0d17 0%, #000 70%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+#mainMenu button { width: 220px; }
+
+/* BOTÕES */
+button {
+    padding: 12px 22px;
+    margin: 6px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border: 1px solid #ffffff22;
+    border-radius: 4px;
+    background: transparent;
+    color: #fff;
+    text-transform: uppercase;
+    transition: 0.25s;
+}
+button:hover { background: #fff; color: #000; }
+button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* HUD */
+#resources, #shipStatus, #starsFound {
+    margin-top: 10px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #cfcfcf;
+}
+
+/* ESPAÇO */
+#space {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    margin-top: 25px;
+    border-radius: 8px;
+    border: 1px solid #ffffff22;
+    background:
+        radial-gradient(circle at center, #111 0%, #000 65%),
+        repeating-radial-gradient(circle, #ffffff08 0 1px, transparent 1px 4px);
+    overflow: hidden;
+}
+#space.dyson { box-shadow: inset 0 0 90px #ffcc0088; }
+
+/* GALÁXIA */
+#galaxy { position: absolute; inset: 0; z-index: 0; }
+
+/* ESTRELAS */
+.star { position: absolute; border-radius: 50%; cursor: pointer; z-index: 1; transition:0.2s;}
+.star:hover { transform: scale(1.2); box-shadow: 0 0 20px #fff; }
+
+.normal-star { width:26px;height:26px;background:#fff;box-shadow:0 0 10px #fff; }
+.white-dwarf { width:38px;height:38px;background:#e6f1ff;box-shadow:0 0 25px #9ecbff; }
+.giant-star { width:60px;height:60px;background:radial-gradient(circle,#ffb703,#fb8500);box-shadow:0 0 40px #ff8800; }
+
+/* PAINEL DE CONQUISTAS */
+#achievementsPanel{
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    background: rgba(0,0,0,0.7);
+    border:1px solid #ffffff33;
+    padding:12px 16px;
+    border-radius:8px;
+    width:220px;
+    color:#fff;
+    font-size:13px;
+    text-align:left;
+    z-index:1000;
+}
+#achievementsPanel h2{ font-family:'Orbitron',sans-serif; font-size:16px; margin:0 0 8px 0; text-align:center; }
+#achievementsList{ list-style:none; padding:0;margin:0; }
+#achievementsList li{ padding:4px 6px; margin:2px 0; border-radius:4px; background:#ffffff11; transition:0.3s; opacity:0.5; }
+#achievementsList li.unlocked{ background:#ffcc00aa;color:#000;font-weight:bold; opacity:1; }
+
+/* BADGE DE CONQUISTA */
+#achievementBadge{
+    position: fixed;
+    left:50%;
+    top:50%;
+    transform: translate(-50%,-50%) scale(0);
+    background:#ffcc00;
+    color:#000;
+    padding:12px 20px;
+    border-radius:12px;
+    font-family:'Orbitron',sans-serif;
+    font-weight:bold;
+    font-size:16px;
+    text-align:center;
+    z-index:2000;
+    box-shadow:0 0 20px #ffcc00aa;
+    pointer-events:none;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+    opacity:0;
+}
+
+/* PARTICULAS DO BADGE */
+.particle{
+    position:fixed;
+    width:6px;height:6px;
+    background:#ffcc00;
+    border-radius:50%;
+    pointer-events:none;
+    z-index:2100;
+    opacity:1;
+}
+</style>
+</head>
+<body>
+
+<div id="mainMenu">
+<h1>🚀 SPACE EXPLORATION</h1>
+<p>Escolha o modo</p>
+<button onclick="startGame('casual')">Casual</button>
+<button onclick="startGame('realista')">Realista</button>
+<button onclick="startGame('sandbox')">Sandbox</button>
+<button onclick="startGame('dyson')">Esfera de Dyson</button>
+</div>
+
+<h1>🚀 SPACE EXPLORATION SYSTEM</h1>
+
+<div>
+<button onclick="collect('minerals')">Minério +1</button>
+<button onclick="collect('gas')">Gás +1</button>
+<button onclick="buildHull()">Casco</button>
+<button onclick="buildShip()">Nave</button>
+<button onclick="buildGasCollector()">Coletor Gás</button>
+<button onclick="exploreStars()" id="exploreButton" disabled>Explorar</button>
+<button onclick="buildDysonSphere()" id="dysonButton" disabled>Esfera Dyson</button>
+</div>
+
+<div id="resources"></div>
+<div id="shipStatus"></div>
+<div id="starsFound"></div>
+
+<div id="space">
+<canvas id="galaxy"></canvas>
+</div>
+
+<div id="achievementsPanel">
+<h2>🏆 Conquistas</h2>
+<ul id="achievementsList"></ul>
+</div>
+
+<div id="achievementBadge"></div>
+
+<script>
+/* ===== VARIÁVEIS ===== */
+let resources={minerals:0,gas:0,hull:0}, ships=0, collectors=0, stars=0, gasRate=1, costMultiplier=1, energy=0, dysonProgress=0, dysonUnlocked=false;
+const res=document.getElementById("resources"), shipS=document.getElementById("shipStatus"), starF=document.getElementById("starsFound");
+const exploreBtn=document.getElementById("exploreButton"), dysonBtn=document.getElementById("dysonButton");
+const space=document.getElementById("space"), achievementsList=document.getElementById("achievementsList");
+const badge = document.getElementById("achievementBadge");
+
+/* CONQUISTAS */
+let achievements=[
+    {id:"minerals10",name:"Minerador Iniciante",check:()=>resources.minerals>=10,unlocked:false},
+    {id:"minerals50",name:"Minerador Experiente",check:()=>resources.minerals>=50,unlocked:false},
+    {id:"ships5",name:"Frota Inicial",check:()=>ships>=5,unlocked:false},
+    {id:"stars10",name:"Explorador",check:()=>stars>=10,unlocked:false},
+    {id:"dyson50",name:"Energia Solar",check:()=>energy>=50,unlocked:false},
+    {id:"dysonComplete",name:"Civ. Tipo II",check:()=>dysonProgress>=100,unlocked:false}
+];
+achievements.forEach(a=>{ const li=document.createElement("li"); li.id=a.id; li.innerText=a.name; achievementsList.appendChild(li); });
+
+function checkAchievements(){ achievements.forEach(a=>{ if(!a.unlocked && a.check()){ a.unlocked=true; document.getElementById(a.id).classList.add("unlocked"); showAchievementBadge(a.name); } }); }
+
+function showAchievementBadge(name){
+    badge.innerText = `🏆 ${name}`;
+    badge.style.opacity=1; badge.style.transform="translate(-50%,-50%) scale(1.3)";
+    setTimeout(()=>{ badge.style.transform="translate(-50%,-50%) scale(1)"; },500);
+    setTimeout(()=>{ badge.style.opacity=0; badge.style.transform="translate(-50%,-50%) scale(0)"; },2500);
+    for(let i=0;i<12;i++){
+        const p=document.createElement("div");
+        p.className="particle";
+        p.style.left=(window.innerWidth/2)+"px";
+        p.style.top=(window.innerHeight/2)+"px";
+        document.body.appendChild(p);
+        let angle=Math.random()*Math.PI*2, distance=50+Math.random()*30, speed=2+Math.random()*2, opacity=1;
+        const anim=setInterval(()=>{
+            const x=parseFloat(p.style.left)+Math.cos(angle)*speed;
+            const y=parseFloat(p.style.top)+Math.sin(angle)*speed;
+            p.style.left=x+"px"; p.style.top=y+"px"; opacity-=0.02; p.style.opacity=opacity;
+            if(opacity<=0){ clearInterval(anim); p.remove(); }
+        },16);
+    }
+}
+
+/* INICIAR JOGO */
+function startGame(mode){
+    if(mode==="casual"){gasRate=1; costMultiplier=1;}
+    if(mode==="realista"){gasRate=0.5; costMultiplier=2;}
+    if(mode==="sandbox"){resources={minerals:500,gas:500,hull:50}; ships=10; collectors=5; gasRate=2; costMultiplier=0.5;}
+    if(mode==="dyson"){resources={minerals:200,gas:200,hull:50}; ships=5; collectors=2; dysonUnlocked=true; dysonBtn.disabled=false;}
+    document.getElementById("mainMenu").style.display="none";
+    update();
+}
+
+/* UPDATE */
+function update(){
+    res.innerText=`MINÉRIO: ${resources.minerals} | GÁS: ${resources.gas} | CASCO: ${resources.hull} | ⚡ ENERGIA: ${energy}`;
+    shipS.innerText=`NAVES: ${ships} | COLETORES: ${collectors}`;
+    starF.innerText=`ESTRELAS: ${stars} | DYSON: ${dysonProgress}%`;
+    exploreBtn.disabled=ships<=0;
+    if(dysonProgress>=50) space.classList.add("dyson");
+    checkAchievements();
+}
+
+/* MECÂNICAS */
+function collect(type){ resources[type]++; update(); }
+function buildHull(){ let c=Math.ceil(5*costMultiplier); if(resources.minerals>=c){resources.minerals-=c; resources.hull++; update();} }
+function buildShip(){ let c=Math.ceil(5*costMultiplier); if(resources.gas>=c && resources.hull>=c){resources.gas-=c; resources.hull--; ships++; update();} }
+function buildGasCollector(){ if(resources.minerals>=10){resources.minerals-=10; collectors++; update();} }
+
+/* GÁS AUTOMÁTICO */
+setInterval(()=>{ resources.gas+=collectors*gasRate; update(); },5000);
+
+/* EXPLORAÇÃO */
+function exploreStars(){ ships--; stars++; createStar("normal-star"); if(Math.random()<0.1) createStar("white-dwarf"); if(Math.random()<0.05) createStar("giant-star"); update(); }
+function createStar(type){ const s=document.createElement("div"); s.className="star "+type; s.style.left=Math.random()*(space.clientWidth-70)+"px"; s.style.top=Math.random()*(space.clientHeight-70)+"px"; s.onclick=()=>handleStar(type,s); space.appendChild(s);}
+function handleStar(type,el){
+    if(dysonUnlocked){
+        if(type==="white-dwarf"){ energy+=15; el.remove(); update(); } 
+        else{ el.remove(); } // estrelas normais e gigantes não geram energia
+    }
+}
+function buildDysonSphere(){ if(energy>=100){ energy-=100; dysonProgress+=10; if(dysonProgress>=100){ dysonProgress=100; alert("🌌 VITÓRIA! ESFERA DE DYSON COMPLETA — CIVILIZAÇÃO TIPO II"); } update(); } }
+
+/* GALÁXIA DE PARTÍCULAS */
+const galaxyCanvas=document.getElementById("galaxy"); const gctx=galaxyCanvas.getContext("2d"); let particles=[]; const COUNT=700;
+function resizeGalaxy(){ galaxyCanvas.width=space.clientWidth; galaxyCanvas.height=space.clientHeight; }
+resizeGalaxy(); window.addEventListener("resize",resizeGalaxy);
+function createGalaxy(){ particles=[]; const cx=galaxyCanvas.width/2, cy=galaxyCanvas.height/2; for(let i=0;i<COUNT;i++){ const angle=Math.random()*Math.PI*2; const radius=Math.pow(Math.random(),0.6)*Math.min(cx,cy); particles.push({angle,radius,speed:0.0004+Math.random()*0.001,size:Math.random()*1.5+0.5,alpha:Math.random()*0.7+0.2}); } }
+createGalaxy();
+function animateGalaxy(){ gctx.clearRect(0,0,galaxyCanvas.width,galaxyCanvas.height); const cx=galaxyCanvas.width/2, cy=galaxyCanvas.height/2; particles.forEach(p=>{ p.angle+=p.speed; const x=cx+Math.cos(p.angle)*p.radius; const y=cy+Math.sin(p.angle)*p.radius; gctx.fillStyle=`rgba(255,255,255,${p.alpha})`; gctx.beginPath(); gctx.arc(x,y,p.size,0,Math.PI*2); gctx.fill(); }); requestAnimationFrame(animateGalaxy); }
+animateGalaxy();
+update();
+</script>
+</body>
+</html>

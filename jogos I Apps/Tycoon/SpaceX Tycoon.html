@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SpaceX Tycoon | Mission Control</title>
+<style>
+:root {
+    --dark-bg: #050505;
+    --panel-bg: #111;
+    --spacex-blue: #005288;
+    --spacex-orange: #ff4d00;
+    --scrap-gold: #f1c40f;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+    --text: #ffffff;
+    --text-dim: #666;
+}
+body { font-family: 'Segoe UI', sans-serif; background: var(--dark-bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; }
+.dev-credits { position: absolute; top: 15px; right: 20px; text-align: right; font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; border-right: 2px solid var(--spacex-blue); padding-right: 10px; line-height: 1.4; }
+.dev-credits span { color: var(--text); font-weight: bold; }
+h1 { letter-spacing: 8px; font-weight: 300; margin-bottom: 20px; border-bottom: 1px solid #333; width: 100%; text-align: center; padding-bottom: 10px; }
+h1 span { color: var(--spacex-blue); font-weight: bold; }
+.dashboard { display: grid; grid-template-columns: 300px 1fr; gap: 20px; max-width: 1200px; width: 100%; }
+.panel { background: var(--panel-bg); border: 1px solid #222; padding: 20px; border-radius: 4px; }
+#weather-box { padding: 10px; text-align: center; font-weight: bold; text-transform: uppercase; border-radius: 4px; margin-bottom: 20px; letter-spacing: 2px; font-size: 12px; }
+.weather-clear { background: var(--success); color: #000; }
+.weather-cloudy { background: var(--scrap-gold); color: #000; }
+.weather-storm { background: var(--danger); color: #fff; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.5; } }
+.stat-group { margin-bottom: 15px; border-left: 2px solid var(--spacex-blue); padding-left: 15px; }
+.stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; }
+.stat-value { font-size: 20px; font-family: 'Courier New', monospace; font-weight: bold; }
+h3 { font-size: 13px; text-transform: uppercase; margin-top: 0; color: var(--spacex-blue); letter-spacing: 2px; }
+.grid-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+button { background: #1a1a1a; border: 1px solid #333; color: white; padding: 12px; cursor: pointer; font-size: 11px; text-align: left; transition: 0.2s; }
+button:hover:not(:disabled) { background: var(--spacex-blue); border-color: white; }
+button:disabled { opacity: 0.2; cursor: not-allowed; }
+.btn-launch { background: linear-gradient(90deg, #111, #222); border-left: 4px solid var(--spacex-orange); }
+#console { grid-column: span 2; background: #000; height: 180px; padding: 15px; font-family: 'Courier New', monospace; font-size: 12px; overflow-y: auto; display: flex; flex-direction: column-reverse; color: #00ff00; }
+#overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.end-card { border: 1px solid var(--spacex-blue); padding: 40px; background: #080808; max-width: 500px; border-radius: 8px; }
+.progress-container { width: 100%; background: #222; border-radius: 4px; height: 14px; margin-bottom: 10px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: var(--spacex-orange); transition: width 0.3s; }
+.tech-list { margin-top: 10px; font-size: 11px; color: var(--scrap-gold); }
+.missions { margin-top: 15px; font-size: 11px; color: #f1c40f; }
+</style>
+</head>
+<body>
+
+<div class="dev-credits">
+    Sistemas de Missão<br>
+    Desenvolvedor: <span>WENDEL</span>
+</div>
+
+<div id="overlay">
+    <div class="end-card">
+        <h2 id="end-title">RELATÓRIO DE MISSÃO</h2>
+        <p id="end-message"></p>
+        <button onclick="location.reload()" style="width: 100%; text-align: center; background: var(--spacex-blue); border: none; padding: 15px; font-weight: bold; color: #fff; cursor: pointer;">REINICIAR SISTEMAS</button>
+    </div>
+</div>
+
+<h1>SPACE<span>X</span> <small style="font-size: 10px;">MISSION CONTROL PRO</small></h1>
+
+<div class="dashboard">
+    <aside class="panel">
+        <div id="weather-box" class="weather-clear">Clima: OK</div>
+        <div class="stat-group"><div class="stat-label">Capital</div><div class="stat-value">$<span id="money">5000</span></div></div>
+        <div class="stat-group"><div class="stat-label">Foguetes</div>
+            <div class="stat-value">
+                Pequeno: <span id="rocket-small">1</span><br />
+                Médio: <span id="rocket-medium">0</span><br />
+                Pesado: <span id="rocket-heavy">0</span>
+            </div>
+        </div>
+        <div class="stat-group" style="border-left-color: var(--scrap-gold);"><div class="stat-label">Sucata</div><div class="stat-value" id="scrap-val">0</div></div>
+        <div class="stat-group" style="border-left-color: var(--danger);"><div class="stat-label">Engenheiros</div><div class="stat-value" id="eng-val">0</div></div>
+        <div class="stat-group"><div class="stat-label">Custo</div><div class="stat-value" style="color: var(--danger); font-size: 14px;">-$<span id="burn-rate">0</span></div></div>
+        <div class="stat-group">
+            <div class="stat-label">Tecnologias</div>
+            <div class="tech-list" id="tech-list">Nenhuma</div>
+        </div>
+        <div class="stat-group">
+            <div class="stat-label">Missões Ativas</div>
+            <div class="missions" id="mission-list">Nenhuma</div>
+        </div>
+    </aside>
+
+    <main class="panel">
+        <h3>Operações</h3>
+        <div class="grid-btns">
+            <button onclick="build('factory', 2000)">Fábrica Automática ($2k)</button>
+            <button onclick="hireEngineer()">Contratar Engenheiro ($1k)</button>
+            <button onclick="research('reusable', 5000)">Tecnologia Reutilizável ($5k)</button>
+            <button onclick="research('solar', 3000)">Painéis Solares ($3k)</button>
+            <button onclick="recycle()">Reciclar Sucata (5 un.)</button>
+        </div>
+        <h3>Lançamentos</h3>
+        <div class="grid-btns">
+            <button class="btn-launch" onclick="launch('small')">Foguete Pequeno</button>
+            <button class="btn-launch" onclick="launch('medium')">Foguete Médio</button>
+            <button class="btn-launch" onclick="launch('heavy')">Foguete Pesado</button>
+            <button onclick="contract()">Subsídio NASA</button>
+            <button onclick="clearScrap()">Limpar Base ($500)</button>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="launch-progress"></div>
+        </div>
+    </main>
+    <div id="console"></div>
+</div>
+
+<script>
+let money = 5000, scrap = 0, engineers = 0, factories = 0;
+let rockets = { small: 1, medium: 0, heavy: 0 };
+let techUnlocked = [], weather = 'clear';
+let missions = [];
+
+const consoleEl = document.getElementById("console");
+const weatherBox = document.getElementById("weather-box");
+const techListEl = document.getElementById("tech-list");
+const progressBar = document.getElementById("launch-progress");
+const missionListEl = document.getElementById("mission-list");
+
+function log(msg,type='info'){
+    const div=document.createElement('div');
+    let color='#00ff00';
+    if(type==='success') color='#2ecc71';
+    if(type==='error') color='#ff4d00';
+    if(type==='event') color='#f39c12';
+    div.innerHTML=`<span style="color:${color}">[WENDEL-OS] ></span> ${msg}`;
+    consoleEl.prepend(div);
+}
+
+function updateUI(){
+    document.getElementById("money").textContent=Math.floor(money).toLocaleString();
+    document.getElementById("rocket-small").textContent=rockets.small;
+    document.getElementById("rocket-medium").textContent=rockets.medium;
+    document.getElementById("rocket-heavy").textContent=rockets.heavy;
+    document.getElementById("scrap-val").textContent=scrap;
+    document.getElementById("eng-val").textContent=engineers;
+    document.getElementById("burn-rate").textContent=Math.floor(factories*150 + engineers*80*(techUnlocked.includes('solar') ? 0.7 : 1));
+    techListEl.textContent = techUnlocked.length ? techUnlocked.join(', ') : 'Nenhuma';
+    missionListEl.textContent = missions.length ? missions.join(', ') : 'Nenhuma';
+    document.querySelectorAll('.btn-launch').forEach(btn=>btn.disabled=(weather==='storm'));
+    checkGameOver();
+}
+
+function checkGameOver(){
+    if(money>=150000 && techUnlocked.includes('reusable')){
+        showEnd("VITÓRIA","Parabéns! Você domina o espaço com tecnologia reutilizável!");
+    } else if(money<=-5000){
+        showEnd("FALÊNCIA","Wendel, as dívidas encerraram o projeto.");
+    }
+}
+
+function showEnd(title,msg){
+    document.getElementById("overlay").style.display="flex";
+    document.getElementById("end-title").textContent=title;
+    document.getElementById("end-message").textContent=msg;
+}
+
+function build(type,cost){
+    if(money>=cost){
+        money-=cost;
+        if(type==='factory'){ factories++; log("Fábrica operacional.",'success'); }
+        updateUI();
+    } else log("Fundos insuficientes.",'error');
+}
+
+function hireEngineer(){
+    if(money>=1000){ money-=1000; engineers++; log("Engenheiro contratado.",'success'); updateUI(); }
+    else log("Sem verba.",'error');
+}
+
+function research(type,cost){
+    if(money>=cost && !techUnlocked.includes(type)){
+        money-=cost; techUnlocked.push(type); log(`PESQUISA: ${type.toUpperCase()}.`,'success'); updateUI();
+    } else log("Pesquisa já realizada ou fundos insuficientes.",'error');
+}
+
+function launch(size){
+    if(rockets[size]<=0){ log("Sem foguetes deste tipo!",'error'); return; }
+    rockets[size]--;
+    let progress = 0;
+    log(`Ignindo foguete ${size.toUpperCase()}...`);
+    progressBar.style.width = '0%';
+
+    let interval = setInterval(()=>{
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        if(progress>=100){
+            clearInterval(interval);
+            progressBar.style.width='0%';
+            let chance = size==='small'?0.8:size==='medium'?0.5:0.3;
+            chance += engineers*0.05;
+            if(weather==='cloudy') chance-=0.1;
+            let success=Math.random()<chance;
+            let reward = size==='small'?5000:size==='medium'?15000:40000;
+            if(success){
+                money+=reward;
+                if(techUnlocked.includes('reusable') && Math.random()>0.4){ rockets[size]++; log("POUSO: Foguete recuperado!",'success'); }
+                else { scrap++; log(`SUCESSO: +$${reward}.`,'success'); }
+            } else { scrap+=size==='small'?1:size==='medium'?2:3; log("RUD: Explosão!",'error'); }
+            updateUI();
+        }
+    },120);
+}
+
+function contract(){
+    if(money >= 1000){
+        money -= 1000;  // Custo para obter o subsídio
+        // Opções de recompensa
+        const options = [
+            () => { rockets.small += 1; log("Recebeu 1 foguete pequeno!", 'success'); },
+            () => { scrap += 3; log("Recebeu 3 unidades de sucata!", 'success'); },
+            () => { engineers += 1; log("Recebeu 1 engenheiro!", 'success'); },
+        ];
+        // Escolhe uma recompensa aleatória
+        const reward = options[Math.floor(Math.random() * options.length)];
+        reward();
+        updateUI();
+    } else {
+        log("Você precisa de pelo menos $1000 para trocar.", 'error');
+    }
+}
+
+function recycle(){ if(scrap>=5){ scrap-=5; money+=1500; log("Sucata reciclada.",'success'); updateUI(); } }
+function clearScrap(){ if(money>=500){ money-=500; scrap=0; log("Pátio limpo.",'success'); updateUI(); } }
+
+// Clima aleatório
+setInterval(()=>{
+    const rand=Math.random();
+    if(rand>0.85){ weather='storm'; weatherBox.textContent="Clima: TEMPESTADE"; weatherBox.className="weather-storm"; }
+    else if(rand>0.6){ weather='cloudy'; weatherBox.textContent="Clima: NUBLADO"; weatherBox.className="weather-cloudy"; }
+    else{ weather='clear'; weatherBox.textContent="Clima: OK"; weatherBox.className="weather-clear"; }
+    updateUI();
+},12000);
+
+// Custos periódicos
+setInterval(()=>{
+    let burn=factories*150 + engineers*80;
+    if(techUnlocked.includes('solar')) burn*=0.7;
+    money-=burn;
+    updateUI();
+},10000);
+
+// Produção de foguetes
+setInterval(()=>{
+    if(factories>0){ 
+        let efficiency = 1 + engineers*0.1;
+        rockets.small += Math.floor(factories*efficiency);
+        rockets.medium += Math.floor(factories*efficiency*0.5);
+        rockets.heavy += Math.floor(factories*efficiency*0.2);
+        log(`Fábricas produziram foguetes.`, 'event'); 
+        updateUI(); 
+    }
+},20000);
+
+// Eventos aleatórios
+setInterval(()=>{
+    const chance=Math.random();
+    if(chance>0.95){
+        let loss=Math.floor(Math.random()*500+200);
+        money-=loss;
+        log(`Evento negativo: vazamento de combustível! -$${loss}`, 'event');
+    } else if(chance<0.02){
+        let bonus=Math.floor(Math.random()*2000+500);
+        money+=bonus;
+        log(`Evento positivo: investimento estratégico! +$${bonus}`, 'event');
+    }
+    updateUI();
+},25000);
+
+updateUI();
+</script>
+
+</body>
+</html>

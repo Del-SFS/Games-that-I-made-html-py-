@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>SpaceX Tycoon - Conquistas</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+<style>
+body {
+  font-family: 'Orbitron', sans-serif;
+  background: radial-gradient(circle at top, #0b0b1a, #000);
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+h1 {
+  color: #f5f5f5;
+  text-shadow: 0 0 10px #00f6ff;
+  margin: 20px 0;
+}
+
+#status {
+  background: rgba(0,0,0,0.5);
+  padding: 15px;
+  border-radius: 10px;
+  margin: 0 auto 20px;
+  width: 90%;
+  max-width: 600px;
+}
+
+button {
+  margin: 5px;
+  padding: 12px 25px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: linear-gradient(145deg, #00f6ff, #00a7ff);
+  color: #000;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: linear-gradient(145deg, #00a7ff, #00f6ff);
+}
+
+#log {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid #00f6ff;
+  padding: 10px;
+  height: 250px;
+  overflow-y: auto;
+  margin: 10px auto;
+  width: 90%;
+  max-width: 600px;
+  text-align: left;
+  border-radius: 10px;
+}
+
+.progress-container {
+  background: #111;
+  border-radius: 20px;
+  width: 80%;
+  height: 25px;
+  margin: 10px auto;
+  border: 1px solid #00f6ff;
+}
+
+.progress-bar {
+  background: #00f6ff;
+  height: 100%;
+  width: 0%;
+  border-radius: 20px;
+  transition: width 0.5s;
+}
+
+/* Foguete */
+.rocket {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 30px;
+  height: 100px;
+  background: linear-gradient(to top, #ccc 0%, #fff 50%, #aaa 100%);
+  border-radius: 10px 10px 5px 5px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  box-shadow: 0 0 20px #fff;
+}
+
+.rocket::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, orange, red, transparent);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+}
+
+@keyframes launch { 0% { bottom: 0; transform: translateX(-50%) scale(1); } 20% { opacity: 1; } 100% { bottom: 80%; transform: translateX(-50%) scale(1.1); opacity: 0; } }
+@keyframes returnRocket { 0% { bottom: 80%; opacity: 0; } 100% { bottom: 0; opacity: 1; } }
+@keyframes explode { 0% { bottom: 50%; transform: translateX(-50%) scale(1) rotate(0deg); opacity: 1; } 50% { transform: translateX(-50%) scale(1.5) rotate(180deg); opacity: 1; } 100% { transform: translateX(-50%) scale(0) rotate(360deg); opacity: 0; } }
+@keyframes flame { 0% { transform: translateX(-50%) scale(1); opacity: 1; } 100% { transform: translateX(-50%) scale(1.3); opacity: 0.8; } }
+
+.rocket.launch { animation: launch 3s forwards; }
+.rocket.launch::after { animation: flame 0.5s infinite alternate; opacity: 1; }
+.rocket.explode { animation: explode 1.5s forwards; }
+
+#achievementsMenu {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.8);
+  border: 2px solid #00f6ff;
+  border-radius: 10px;
+  padding: 15px;
+  width: 220px;
+  color: #fff;
+  font-size: 14px;
+  text-align: left;
+  z-index: 2000;
+}
+
+#achievementsMenu h3 { text-align: center; margin-top: 0; }
+#achievementsList li { margin-bottom: 8px; list-style: none; }
+#achievementsList li.unlocked { color: #00ff90; font-weight: bold; }
+#achievementsList li.locked { color: #555; text-decoration: line-through; }
+</style>
+</head>
+<body>
+
+<h1>SpaceX Tycoon - Conquistas</h1>
+
+<div id="status">
+  <p>Orçamento: $<span id="budget">200,000,000</span></p>
+  <p>Foguetes disponíveis: <span id="rockets">1</span></p>
+  <p>Tipo de foguete: <span id="rocketType">Falcon 9</span></p>
+  <p>Nível de tecnologia: <span id="tech">Básica</span></p>
+</div>
+
+<div class="progress-container">
+  <div class="progress-bar" id="marsProgress"></div>
+</div>
+<p>Progresso da Colonização de Marte: <span id="marsMissions">0</span>/5</p>
+
+<h3>Foguetes</h3>
+<button onclick="buildRocket('Falcon 9')">Construir Falcon 9 ($50M)</button>
+<button onclick="buildRocket('Starship')">Construir Starship ($150M)</button>
+
+<h3>Missões</h3>
+<button onclick="launchMission('comercial')">Missão Comercial ($80M)</button>
+<button onclick="launchMission('governo')">Missão Governamental ($150M)</button>
+<button onclick="launchMission('marte')">Missão para Marte ($500M)</button>
+
+<h3>Pesquisa Tecnológica</h3>
+<button onclick="researchTech()">Avançar Tecnologia ($100M)</button>
+
+<div id="log"></div>
+
+<!-- Menu de Conquistas -->
+<div id="achievementsMenu">
+  <h3>🏆 Conquistas</h3>
+  <ul id="achievementsList"></ul>
+</div>
+
+<script>
+// Variáveis do jogo
+let budget = 200000000;
+let rockets = ['Falcon 9'];
+let techLevel = 0;
+const techNames = ["Básica", "Reutilizável", "Avançada", "Interestelar"];
+let marsMissions = 0;
+const marsGoal = 5;
+let achievements = new Set();
+
+// Lista de conquistas
+const allAchievements = [
+  { id: 'reusable', name: 'Foguete Reutilizável', desc: 'O Falcon 9 foi lançado e voltou com sucesso!' },
+  { id: 'marsMission', name: 'Primeira Missão para Marte', desc: 'Envie uma missão bem-sucedida para Marte.' },
+  { id: 'fiveMars', name: 'Colonizador de Marte', desc: 'Complete 5 missões para Marte.' },
+  { id: 'techMaster', name: 'Tecnologia Interestelar', desc: 'Alcance o nível máximo de tecnologia.' },
+];
+
+// Funções de UI
+function updateUI() {
+  document.getElementById("budget").innerText = budget.toLocaleString();
+  document.getElementById("rockets").innerText = rockets.length;
+  document.getElementById("tech").innerText = techNames[techLevel];
+  document.getElementById("marsMissions").innerText = marsMissions;
+  document.getElementById("rocketType").innerText = rockets.length > 0 ? rockets[0] : "Nenhum";
+
+  let progress = (marsMissions / marsGoal) * 100;
+  document.getElementById("marsProgress").style.width = progress + "%";
+
+  checkAchievements();
+}
+
+function log(message) {
+  const logDiv = document.getElementById("log");
+  logDiv.innerHTML += message + "<br>";
+  logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+// Conquistas
+function updateAchievementsMenu() {
+  const ul = document.getElementById('achievementsList');
+  ul.innerHTML = '';
+  allAchievements.forEach(a => {
+    const li = document.createElement('li');
+    li.classList.add(achievements.has(a.id) ? 'unlocked' : 'locked');
+    li.innerText = achievements.has(a.id) ? `✅ ${a.name}` : `🔒 ${a.name}`;
+    ul.appendChild(li);
+  });
+}
+
+function checkAchievements() {
+  if(!achievements.has('marsMission') && marsMissions >= 1) { achievements.add('marsMission'); log("🏆 Conquista desbloqueada: Primeira Missão para Marte!"); }
+  if(!achievements.has('fiveMars') && marsMissions >= 5) { achievements.add('fiveMars'); log("🏆 Conquista desbloqueada: Colonizador de Marte!"); }
+  if(!achievements.has('techMaster') && techLevel === techNames.length - 1) { achievements.add('techMaster'); log("🏆 Conquista desbloqueada: Tecnologia Interestelar!"); }
+  updateAchievementsMenu();
+}
+
+// Construir foguetes
+function buildRocket(type) {
+  let cost = type === 'Falcon 9' ? 50000000 : 150000000;
+  if(budget >= cost){ budget -= cost; rockets.push(type); log(`Foguete construído: ${type} 🚀`); updateUI(); }
+  else log("Orçamento insuficiente para construir foguete.");
+}
+
+// Lançar missão
+function launchMission(type) {
+  if(rockets.length === 0){ log("Nenhum foguete disponível."); return; }
+  let rocketType = rockets.shift(); updateUI();
+
+  const rocketEl = document.createElement('div'); rocketEl.classList.add('rocket'); document.body.appendChild(rocketEl);
+  let successChance = 0.5 + techLevel * 0.15; if(rocketType === 'Starship') successChance += 0.1;
+
+  let reward = 0;
+  if(type === 'comercial') reward = 80000000 + techLevel*20000000;
+  if(type === 'governo') reward = 150000000 + techLevel*50000000;
+  if(type === 'marte') reward = 500000000 + techLevel*100000000;
+
+  let success = Math.random() < successChance;
+
+  if(success){
+    rocketEl.classList.add('launch');
+    if(rocketType === 'Falcon 9'){
+      setTimeout(() => {
+        rocketEl.style.animation = "none"; rocketEl.style.bottom = "80%"; rocketEl.offsetHeight;
+        rocketEl.style.animation = "returnRocket 2s forwards";
+        setTimeout(() => {
+          rocketEl.remove(); rockets.push('Falcon 9'); budget += reward; if(type==='marte') marsMissions++; log(`Missão bem-sucedida! ${rocketType} voltou reutilizável! Receita: $${reward.toLocaleString()}`); achievements.add('reusable'); checkAchievements(); updateUI();
+        },2000);
+      },3000);
+    } else {
+      setTimeout(() => { rocketEl.remove(); budget += reward; if(type==='marte') marsMissions++; log(`Missão bem-sucedida! Tipo: ${type}. Receita: $${reward.toLocaleString()}`); updateUI(); },3000);
+    }
+  } else { rocketEl.classList.add('explode'); setTimeout(()=>{ rocketEl.remove(); log(`Falha no lançamento do ${rocketType}... 💥`); },1500);}
+}
+
+// Pesquisa tecnológica
+function researchTech() {
+  if(techLevel >= techNames.length - 1){ log("Tecnologia já está no nível máximo!"); return; }
+  if(budget >= 100000000){ budget -= 100000000; techLevel++; log(`Tecnologia avançada para: ${techNames[techLevel]} 🔬`); updateUI(); }
+  else log("Orçamento insuficiente para pesquisa tecnológica.");
+}
+
+updateUI();
+</script>
+
+</body>
+</html>

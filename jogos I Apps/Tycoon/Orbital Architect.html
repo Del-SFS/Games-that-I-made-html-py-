@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>ORBITAL ARCHITECT - Correção Som</title>
+<style>
+body { background:#05070a; color:#00ffcc; font-family:'Courier New',monospace; margin:0; overflow:hidden; display:flex; justify-content:center; align-items:center; height:100vh; }
+.stars, .particles { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+.stars { background: radial-gradient(2px 2px at 20px 30px,#eee,rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px,#fff,rgba(0,0,0,0)); background-size:200px 200px; opacity:0.3; }
+#menu { text-align:center; border:2px solid #00ffcc; padding:40px; background: rgba(13,17,23,0.95); box-shadow:0 0 30px rgba(0,255,204,0.2); z-index:10; width:350px; }
+h1 { letter-spacing:5px; margin-bottom:30px; text-shadow:0 0 10px #00ffcc; font-size:24px; }
+.menu-btn { display:block; width:100%; padding:15px; margin:10px 0; background:#001a14; color:#00ffcc; border:1px solid #00ffcc; cursor:pointer; font-weight:bold; transition:0.3s; }
+.menu-btn:hover { background:#00ffcc; color:#000; box-shadow:0 0 15px #00ffcc; }
+#credits-panel { display:none; margin-top:20px; font-size:11px; line-height:1.6; color:#88aa99; border-top:1px dashed #00ffcc; padding-top:15px; }
+#sound-controls { margin-top:25px; padding:15px; border-top:1px solid #333; background: rgba(0,0,0,0.3); }
+.vol-label { font-size:10px; margin-bottom:10px; display:block; letter-spacing:2px; }
+input[type=range] { -webkit-appearance:none; width:100%; background:transparent; }
+input[type=range]::-webkit-slider-runnable-track { width:100%; height:4px; cursor:pointer; background:#00332b; border-radius:2px; border:1px solid #00ffcc; }
+input[type=range]::-webkit-slider-thumb { height:15px; width:10px; background:#00ffcc; cursor:pointer; -webkit-appearance:none; margin-top:-6px; box-shadow:0 0 10px #00ffcc; }
+.audio-btn { background:none; border:1px solid #00ffcc; color:#00ffcc; padding:5px 10px; cursor:pointer; font-size:9px; margin-bottom:10px; width:100%; }
+.hint { font-size:8px; color:#555; margin-top:5px; }
+
+#game { display:none; width:550px; background: rgba(13,17,23,0.95); border:2px solid #00ffcc; padding:20px; z-index:10; position:relative; }
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; background:rgba(0,0,0,0.5); padding:10px; border-radius:5px; }
+.progress-bg { height:12px; background:#222; border:1px solid #00ffcc; margin-top:5px; grid-column:span 2; border-radius:6px; overflow:hidden; }
+.progress-fill { height:100%; background:#00ffcc; width:100%; transition:width 0.4s; }
+.controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.controls button { background:#001a14; color:#00ffcc; border:1px solid #00ffcc; padding:12px; cursor:pointer; font-weight:bold; font-size:11px; }
+.controls button:hover:not(:disabled) { background:#00ffcc; color:#000; }
+.controls button:disabled { border-color:#333; color:#444; cursor:not-allowed; }
+#log { height:100px; overflow-y:auto; font-size:11px; color:#88aa99; margin-top:15px; border-top:1px solid #333; padding-top:10px; }
+#win-screen { display:none; position:absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); flex-direction:column; align-items:center; justify-content:center; text-align:center; z-index:100; color:#cc99ff; }
+.cost-tag { display:block; font-size:9px; color:#ff9900; }
+.particle { position:absolute; width:6px; height:6px; border-radius:50%; pointer-events:none; opacity:0.9; animation:particle-move 1s linear forwards; }
+@keyframes particle-move { from{transform:translate(0,0);} to{transform:translate(var(--x),var(--y)); opacity:0;} }
+</style>
+</head>
+<body>
+
+<div class="stars"></div>
+<div class="particles" id="particles"></div>
+
+<div id="menu">
+<h1>ORBITAL ARCHITECT</h1>
+<button class="menu-btn" onclick="startGame('normal')">MODO INFINITO</button>
+<button class="menu-btn" onclick="startGame('portal')" style="border-color:#9900ff;color:#cc99ff;">MISSÃO PORTAL ESTELAR</button>
+<button class="menu-btn" onclick="startGame('extreme')" style="border-color:#ff3300;color:#ff6633;">SOBREVIVÊNCIA EXTREMA</button>
+<button class="menu-btn" onclick="startGame('sandbox')" style="border-color:#33ff66;color:#00aa33;">CRIADOR LIVRE</button>
+<button class="menu-btn" onclick="startGame('science')" style="border-color:#3399ff;color:#66ccff;">MISSÃO CIENTÍFICA</button>
+<button class="menu-btn" onclick="toggleCredits()" style="border-color:#555;color:#888;font-size:9px;">CRÉDITOS</button>
+
+<div id="credits-panel">
+<p>GAME DESIGN & RULES<br><span class="credit-name">WENDEL</span></p>
+<p>PROGRAMMING & AI ASSISTANCE<br><span class="credit-name">GEMINI AI</span></p>
+<p>MÚSICA AMBIENTE<br><span class="credit-name">PIXABAY AUDIO</span></p>
+<p style="font-size:9px;margin-top:10px;">© 2026 - ORBITAL SERIES</p>
+</div>
+
+<div id="sound-controls">
+<button class="audio-btn" id="music-toggle">🎵 PLAY MÚSICA</button>
+<span class="vol-label">VOLUME (↑ / ↓)</span>
+<input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5">
+<p class="hint">DICA: Use as setas do teclado</p>
+</div>
+</div>
+
+<div id="game">
+<div id="game-container">
+<div id="win-screen">
+<h1>🏆 VITÓRIA 🏆</h1>
+<p>PORTAL ATIVADO POR WENDEL!</p>
+<button onclick="restartGame()">VOLTAR AO MENU</button>
+</div>
+
+<h2 style="text-align:center;font-size:18px;">ORBITAL ARCHITECT</h2>
+
+<div class="stats-grid">
+<div>⚡ ENERGIA: <span id="power">100</span></div>
+<div>💰 CRÉDITOS: $<span id="money">250</span></div>
+<div>👨‍🚀 CREW: <span id="crew">1</span></div>
+<div>🧪 LABS: <span id="labs">0</span></div>
+<div class="progress-bg"><div id="ox-bar" class="progress-fill"></div></div>
+<div class="progress-bg"><div id="build-bar" class="progress-fill" style="width:0%"></div></div>
+</div>
+
+<div class="controls" id="control-buttons"></div>
+<div id="log">Status: Online.</div>
+</div>
+</div>
+
+<audio id="bg-music" loop>
+<source src="https://cdn.pixabay.com/audio/2022/03/10/audio_c362939311.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfx" src="https://cdn.pixabay.com/audio/2022/03/10/audio_sfx_click.mp3"></audio>
+<audio id="alarm" src="https://cdn.pixabay.com/audio/2022/03/10/audio_sfx_alert.mp3"></audio>
+
+<script>
+const music=document.getElementById('bg-music');
+const slider=document.getElementById('volume-slider');
+const btnMusic=document.getElementById('music-toggle');
+const alarm=document.getElementById('alarm');
+const particlesContainer=document.getElementById('particles');
+let creditsVisible=false;
+
+// volume e teclado
+slider.addEventListener('input',()=>music.volume=slider.value);
+window.addEventListener('keydown', e=>{
+    if(e.key==="ArrowUp"){ e.preventDefault(); music.volume=Math.min(1,music.volume+0.05); slider.value=music.volume; }
+    if(e.key==="ArrowDown"){ e.preventDefault(); music.volume=Math.max(0,music.volume-0.05); slider.value=music.volume; }
+});
+
+// toggle credits
+function toggleCredits(){ creditsVisible=!creditsVisible; document.getElementById('credits-panel').style.display=creditsVisible?'block':'none'; }
+
+// toggle music
+btnMusic.addEventListener('click', ()=>{
+    if(music.paused){ music.play(); btnMusic.innerText="⏸ PAUSAR MÚSICA"; }
+    else { music.pause(); btnMusic.innerText="🎵 PLAY MÚSICA"; }
+});
+
+// game
+let power=100,money=250,oxygen=100,crew=1,solar=1,labs=0,constructing=false,portalMode=false,loopInterval,gameMode='normal';
+
+function startGame(mode){
+    document.getElementById('menu').style.display='none';
+    document.getElementById('game').style.display='block';
+    portalMode=(mode==='portal');
+    gameMode=mode;
+    initGame();
+}
+
+function restartGame(){ location.reload(); }
+
+function initGame(){
+    const controls=document.getElementById('control-buttons');
+    controls.innerHTML=`
+        <button onclick="build('solar',event)">CONSTRUIR SOLAR<span class="cost-tag">$50</span></button>
+        <button onclick="buildLab(event)" id="btn-lab">CONSTRUIR LAB<span class="cost-tag">100⚡+1👨‍🚀(10s)</span></button>
+        <button onclick="build('oxygen',event)">RECARREGAR O2<span class="cost-tag">50⚡</span></button>
+        <button onclick="build('crew',event)">RECRUTAR<span class="cost-tag">$200</span></button>
+        <button onclick="upgrade('solar',event)">UPGRADE SOLAR<span class="cost-tag">$200</span></button>
+        ${portalMode?'<button id="btn-win" onclick="buildPortal(event)" style="grid-column: span 2; border-color:#9900ff; color:#cc99ff;">CONSTRUIR PORTAL ESTELAR<span class="cost-tag">$5000 + 3 👨‍🚀 (30s)</span></button>':''}
+        <button onclick="restartGame()" style="grid-column: span 2; border-color:#444; color:#666; margin-top:10px; font-size:9px;">ABANDONAR MISSÃO</button>
+    `;
+
+    // ajustes iniciais por modo
+    switch(gameMode){
+        case 'extreme':
+            oxygen=50; power=50; money=100; crew=1;
+            log("Modo SOBREVIVÊNCIA EXTREMA ativado! Oxigênio e recursos limitados.", 'warning');
+            break;
+        case 'sandbox':
+            oxygen=100; power=9999; money=9999; crew=50; labs=20; solar=20;
+            log("Modo CRIADOR LIVRE ativado! Recursos infinitos.", 'success');
+            break;
+        case 'science':
+            labs=2; money=200;
+            log("Modo MISSÃO CIENTÍFICA ativado! Foque na construção de LABs.", 'info');
+            break;
+    }
+
+    update();
+    loopInterval=setInterval(gameLoop,2000);
+}
+
+function update(){
+    document.getElementById('power').innerText=Math.floor(power);
+    document.getElementById('money').innerText=Math.floor(money);
+    document.getElementById('crew').innerText=crew;
+    document.getElementById('labs').innerText=labs;
+    const oxBar=document.getElementById('ox-bar');
+    oxBar.style.width=oxygen+"%";
+    oxBar.style.background = oxygen>60?"#00ffcc":oxygen>30?"#ff9900":"#ff4444";
+    const gameDiv=document.getElementById('game');
+    if(oxygen<20){ gameDiv.style.background="rgba(255,0,0,0.2)"; if(alarm.paused) alarm.play(); } 
+    else { gameDiv.style.background="rgba(13,17,23,0.95)"; if(!alarm.paused) alarm.pause(); }
+}
+
+function log(msg,type='info'){
+    const l=document.getElementById('log');
+    l.innerHTML+=`<br><span class="log-${type}">${msg}</span>`;
+    l.scrollTop=l.scrollHeight;
+}
+
+function playSFX(){ const s=document.getElementById('sfx'); s.currentTime=0; s.play(); }
+
+function emitParticles(x,y,color){
+    for(let i=0;i<6;i++){
+        const p=document.createElement('div');
+        p.className='particle';
+        p.style.left=x+'px';
+        p.style.top=y+'px';
+        p.style.background=color;
+        p.style.setProperty('--x',(Math.random()-0.5)*100+'px');
+        p.style.setProperty('--y',(Math.random()-0.5)*100+'px');
+        particlesContainer.appendChild(p);
+        setTimeout(()=>p.remove(),1000);
+    }
+}
+
+// partículas nos botões
+document.querySelectorAll('.menu-btn, .controls button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ playSFX(); emitParticlesFromButton({target:btn}, '#00ffcc'); });
+});
+
+function emitParticlesFromButton(event,color){
+    const rect=event.target.getBoundingClientRect();
+    for(let i=0;i<6;i++){
+        const p=document.createElement('div');
+        p.className='particle';
+        p.style.left=rect.left + rect.width/2 + 'px';
+        p.style.top=rect.top + rect.height/2 + 'px';
+        p.style.background=color;
+        p.style.setProperty('--x',(Math.random()-0.5)*100+'px');
+        p.style.setProperty('--y',(Math.random()-0.5)*100+'px');
+        particlesContainer.appendChild(p);
+        setTimeout(()=>p.remove(),1000);
+    }
+}
+
+// funções de jogo
+function build(type,event){
+    if(type==='solar' && money>=50){ money-=50; solar++; log("Solar construído!",'success'); }
+    else if(type==='oxygen' && power>=50){ power-=50; oxygen=Math.min(100,oxygen+40); log("O2 recarregado!",'success'); }
+    else if(type==='crew' && money>=200){ money-=200; crew++; log("Tripulante recrutado!",'success'); }
+    update();
+}
+
+function buildLab(event){
+    if(power>=100 && crew>=1 && !constructing){
+        power-=100; crew-=1; constructing=true; update(); log("Construção do LAB iniciada...",'warning');
+        setTimeout(()=>{ labs++; crew+=1; constructing=false; update(); log("LAB construído!",'success'); emitParticles(300,100,'#00ffcc'); },10000);
+    }
+}
+
+function buildPortal(event){
+    if(money>=5000 && crew>=3 && !constructing){
+        money-=5000; crew-=3; constructing=true; update(); log("Construção do PORTAL iniciada...",'warning');
+        setTimeout(()=>{ document.getElementById('win-screen').style.display='flex'; log("PORTAL ATIVADO!",'success'); emitParticles(275,150,'#cc99ff'); },30000);
+    }
+}
+
+function upgrade(type,event){
+    if(type==='solar' && money>=200){ money-=200; solar*=1.5; log("Solar melhorado!",'success'); update(); }
+}
+
+// loop principal
+function gameLoop(){
+    switch(gameMode){
+        case 'extreme': oxygen-=crew*2.5; break;
+        case 'science': money+=labs*50; break;
+        case 'sandbox': oxygen=100; power=9999; money=9999; crew=50; break;
+        default: oxygen-=crew*1.2;
+    }
+    power+=solar*4;
+    if(gameMode!=='sandbox') money+=labs*30;
+    if(oxygen<=0 && gameMode!=='sandbox'){ log("OXIGÊNIO ESGOTADO!",'danger'); alert("GAME OVER!"); restartGame(); }
+    update();
+}
+</script>
+</body>
+</html>
